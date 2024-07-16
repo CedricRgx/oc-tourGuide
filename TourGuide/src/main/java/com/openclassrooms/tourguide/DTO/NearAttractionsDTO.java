@@ -1,14 +1,26 @@
 package com.openclassrooms.tourguide.DTO;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import gpsUtil.location.Location;
 
+@JsonPropertyOrder({"attractionName", "attractionLocation", "userLocation", "distanceBetweenLocationAttractionAndUserLocation", "rewardPoints"})
 public class NearAttractionsDTO {
 
+    @JsonProperty("attractionName")
     private String attractionName;
+
+    @JsonProperty("attractionLocation")
     private Location attractionLocation;
+
+    @JsonProperty("userLocation")
     private Location userLocation;
-    double distanceBetweenLocationAttractionAndUserLocation;
-    int rewardPoints;
+
+    @JsonProperty("distanceBetweenLocationAttractionAndUserLocation")
+    private double distanceBetweenLocationAttractionAndUserLocation;
+
+    @JsonProperty("rewardPoints")
+    private int rewardPoints;
 
     public String getAttractionName() {
         return attractionName;

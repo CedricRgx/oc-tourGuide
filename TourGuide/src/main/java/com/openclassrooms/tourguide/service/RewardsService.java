@@ -86,4 +86,8 @@ public class RewardsService {
 		return getRewardPoints(attraction, user);
 	}
 
+	public boolean isNearAttraction(VisitedLocation visitedLocation, Attraction attraction) {
+		return getDistance(attraction, visitedLocation.location) > proximityBuffer ? false : true;
+	}
+
 }

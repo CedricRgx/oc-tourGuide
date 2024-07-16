@@ -3,10 +3,12 @@ package com.openclassrooms.tourguide;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import gpsUtil.location.Location;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -60,11 +62,16 @@ public class TestRewardsService {
 		InternalTestHelper.setInternalUserNumber(1);
 		TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
 
-		rewardsService.calculateRewards(tourGuideService.getAllUsers().get(0));
-		List<UserReward> userRewards = tourGuideService.getUserRewards(tourGuideService.getAllUsers().get(0));
+		User user = tourGuideService.getAllUsers().get(0);
+
+		rewardsService.calculateRewards(user);
+		List<UserReward> userRewards = tourGuideService.getUserRewards(user);
 		tourGuideService.tracker.stopTracking();
 
-		assertEquals(gpsUtil.getAttractions().size(), userRewards.size());
+		// List of attractions of the user last position in a range of 10 miles
+		List<Attraction> nearAttractionsList = gpsUtil.getAttractions().stream().filter(a -> rewardsService.isNearAttraction(user.getLastVisitedLocation(), a)).toList();
+
+		assertEquals(gpsUtil.getAttractions().size(), nearAttractionsList.size());
 	}
 
 }
