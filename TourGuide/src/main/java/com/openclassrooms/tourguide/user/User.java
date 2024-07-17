@@ -8,6 +8,9 @@ import java.util.UUID;
 import gpsUtil.location.VisitedLocation;
 import tripPricer.Provider;
 
+/**
+ * Class representing a user in the TourGuide application
+ */
 public class User {
 	private final UUID userId;
 	private final String userName;
@@ -18,13 +21,22 @@ public class User {
 	private List<UserReward> userRewards = new ArrayList<>();
 	private UserPreferences userPreferences = new UserPreferences();
 	private List<Provider> tripDeals = new ArrayList<>();
+
+	/**
+	 * Constructs a User with the given details
+	 *
+	 * @param userId the unique identifier for the user
+	 * @param userName the username of the user
+	 * @param phoneNumber the phone number of the user
+	 * @param emailAddress the email address of the user
+	 */
 	public User(UUID userId, String userName, String phoneNumber, String emailAddress) {
 		this.userId = userId;
 		this.userName = userName;
 		this.phoneNumber = phoneNumber;
 		this.emailAddress = emailAddress;
 	}
-	
+
 	public UUID getUserId() {
 		return userId;
 	}
@@ -56,29 +68,47 @@ public class User {
 	public Date getLatestLocationTimestamp() {
 		return latestLocationTimestamp;
 	}
-	
+
+	/**
+	 * Adds a visited location to the user's list of visited locations
+	 *
+	 * @param visitedLocation the visited location to add
+	 */
 	public void addToVisitedLocations(VisitedLocation visitedLocation) {
 		visitedLocations.add(visitedLocation);
 	}
-	
+
+	/**
+	 * Gets the list of visited locations of the user
+	 *
+	 * @return the list of visited locations
+	 */
 	public List<VisitedLocation> getVisitedLocations() {
 		return visitedLocations;
 	}
-	
+
+	/**
+	 * Clears the list of visited locations
+	 */
 	public void clearVisitedLocations() {
 		visitedLocations.clear();
 	}
-	
+
+	/**
+	 * Adds a reward to the user's list of rewards
+	 *
+	 * @param userReward the reward to add
+	 */
 	public void addUserReward(UserReward userReward) {
 		if(userRewards.stream().filter(r -> !r.attraction.attractionName.equals(userReward.attraction)).count() == 0) {
 			userRewards.add(userReward);
 		}
 	}
-	
+
 	public List<UserReward> getUserRewards() {
 		return userRewards;
 	}
-	
+
 	public UserPreferences getUserPreferences() {
 		return userPreferences;
 	}

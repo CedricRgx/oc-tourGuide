@@ -4,7 +4,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import gpsUtil.location.Location;
 
-@JsonPropertyOrder({"attractionName", "attractionLocation", "userLocation", "distanceBetweenLocationAttractionAndUserLocation", "rewardPoints"})
+/**
+ * The NearAttractionsDTO DTO is for communicating information to the /getNearbyAttractions endpoint
+ */
+@JsonPropertyOrder(
+        {"attractionName", "attractionLocation", "userLocation", "distanceBetweenLocationAttractionAndUserLocation", "rewardPoints"}
+)
 public class NearAttractionsDTO {
 
     @JsonProperty("attractionName")

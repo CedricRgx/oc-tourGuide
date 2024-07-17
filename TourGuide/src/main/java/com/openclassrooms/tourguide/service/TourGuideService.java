@@ -30,6 +30,9 @@ import gpsUtil.location.VisitedLocation;
 import tripPricer.Provider;
 import tripPricer.TripPricer;
 
+/**
+ * Service for managing users and their interactions with attractions, rewards, and trip deals in the TourGuide application
+ */
 @Service
 public class TourGuideService {
 	private Logger logger = LoggerFactory.getLogger(TourGuideService.class);
@@ -39,6 +42,12 @@ public class TourGuideService {
 	public final Tracker tracker;
 	boolean testMode = true;
 
+	/**
+	 * Constructs a TourGuideService with the given dependencies
+	 *
+	 * @param gpsUtil the GPS utility service
+	 * @param rewardsService the rewards service
+	 */
 	public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService) {
 		this.gpsUtil = gpsUtil;
 		this.rewardsService = rewardsService;
@@ -55,30 +64,64 @@ public class TourGuideService {
 		addShutDownHook();
 	}
 
+	/**
+	 * Retrieves the list of rewards for a given user
+	 *
+	 * @param user the user to retrieve rewards for
+	 * @return the list of user rewards
+	 */
 	public List<UserReward> getUserRewards(User user) {
 		return user.getUserRewards();
 	}
 
+	/**
+	 * Retrieves the current location of a user
+	 *
+	 * @param user the user to retrieve the location for
+	 * @return the visited location of the user
+	 */
 	public VisitedLocation getUserLocation(User user) {
 		VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
 				: trackUserLocation(user);
 		return visitedLocation;
 	}
 
+	/**
+	 * Retrieves a user by their username
+	 *
+	 * @param userName the username of the user
+	 * @return the user with the given username
+	 */
 	public User getUser(String userName) {
 		return internalUserMap.get(userName);
 	}
 
+	/**
+	 * Retrieves a list of all users
+	 *
+	 * @return the list of all users
+	 */
 	public List<User> getAllUsers() {
 		return internalUserMap.values().stream().collect(Collectors.toList());
 	}
 
+	/**
+	 * Adds a user to the internal user map if they are not already present
+	 *
+	 * @param user the user to add
+	 */
 	public void addUser(User user) {
 		if (!internalUserMap.containsKey(user.getUserName())) {
 			internalUserMap.put(user.getUserName(), user);
 		}
 	}
 
+	/**
+	 * Retrieves trip deals for a user based on their rewards points
+	 *
+	 * @param user the user to retrieve trip deals for
+	 * @return the list of trip providers
+	 */
 	public List<Provider> getTripDeals(User user) {
 		int cumulatativeRewardPoints = user.getUserRewards().stream().mapToInt(i -> i.getRewardPoints()).sum();
 		List<Provider> providers = tripPricer.getPrice(tripPricerApiKey, user.getUserId(),
@@ -88,6 +131,12 @@ public class TourGuideService {
 		return providers;
 	}
 
+	/**
+	 * Tracks the current location of a user and updates their rewards
+	 *
+	 * @param user the user to track
+	 * @return the visited location of the user
+	 */
 	public VisitedLocation trackUserLocation(User user) {
 		VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
 		user.addToVisitedLocations(visitedLocation);
@@ -95,22 +144,24 @@ public class TourGuideService {
 		return visitedLocation;
 	}
 
+	/**
+	 * Retrieves a list of nearby attractions for a given visited location.
+	 *
+	 * @param visitedLocation the visited location to find nearby attractions for
+	 * @return the list of nearby attractions
+	 */
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
 		List<Attraction> nearbyAttractions = new ArrayList<>();		for (Attraction attraction : gpsUtil.getAttractions()) {
 			if (rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
 				nearbyAttractions.add(attraction);
 			}
 		}
-		/*List<Attraction> attractions = gpsUtil.getAttractions();
-
-		List<Attraction> nearbyAttractions = attractions.stream().sorted((location1, location2) -> Double.compare(
-				rewardsService.getDistance(visitedLocation.location, new Location(location1.latitude, location1.longitude)),
-				rewardsService.getDistance(visitedLocation.location, new Location(location2.latitude, location2.longitude))
-		)).limit(5).collect(Collectors.toList());*/
-
 		return nearbyAttractions;
 	}
 
+	/**
+	 * Adds a shutdown hook to stop the tracker when the application is stopped
+	 */
 	private void addShutDownHook() {
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
@@ -129,6 +180,9 @@ public class TourGuideService {
 	// internal users are provided and stored in memory
 	private final Map<String, User> internalUserMap = new HashMap<>();
 
+	/**
+	 * Initializes internal users for testing purposes
+	 */
 	private void initializeInternalUsers() {
 		IntStream.range(0, InternalTestHelper.getInternalUserNumber()).forEach(i -> {
 			String userName = "internalUser" + i;
@@ -142,6 +196,11 @@ public class TourGuideService {
 		logger.debug("Created " + InternalTestHelper.getInternalUserNumber() + " internal test users.");
 	}
 
+	/**
+	 * Generates a random location history for a user
+	 *
+	 * @param user the user to generate location history for
+	 */
 	private void generateUserLocationHistory(User user) {
 		IntStream.range(0, 3).forEach(i -> {
 			user.addToVisitedLocations(new VisitedLocation(user.getUserId(),
@@ -149,18 +208,33 @@ public class TourGuideService {
 		});
 	}
 
+	/**
+	 * Generates a random longitude value
+	 *
+	 * @return a random longitude
+	 */
 	private double generateRandomLongitude() {
 		double leftLimit = -180;
 		double rightLimit = 180;
 		return leftLimit + new Random().nextDouble() * (rightLimit - leftLimit);
 	}
 
+	/**
+	 * Generates a random latitude value
+	 *
+	 * @return a random latitude
+	 */
 	private double generateRandomLatitude() {
 		double leftLimit = -85.05112878;
 		double rightLimit = 85.05112878;
 		return leftLimit + new Random().nextDouble() * (rightLimit - leftLimit);
 	}
 
+	/**
+	 * Generates a random date within the past 30 days
+	 *
+	 * @return a random date
+	 */
 	private Date getRandomTime() {
 		LocalDateTime localDateTime = LocalDateTime.now().minusDays(new Random().nextInt(30));
 		return Date.from(localDateTime.toInstant(ZoneOffset.UTC));

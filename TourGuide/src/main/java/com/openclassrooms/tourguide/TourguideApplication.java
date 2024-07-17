@@ -3,6 +3,9 @@ package com.openclassrooms.tourguide;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+/**
+ * The TourguideApplication is used to launch the TourGuide application
+ */
 @SpringBootApplication
 public class TourguideApplication {
 
