@@ -15,6 +15,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -30,6 +31,8 @@ import gpsUtil.location.VisitedLocation;
 import tripPricer.Provider;
 import tripPricer.TripPricer;
 
+import static com.openclassrooms.tourguide.service.GpsUtilService.executor;
+
 /**
  * Service for managing users and their interactions with attractions, rewards, and trip deals in the TourGuide application
  */
@@ -37,6 +40,7 @@ import tripPricer.TripPricer;
 public class TourGuideService {
 	private Logger logger = LoggerFactory.getLogger(TourGuideService.class);
 	private final GpsUtil gpsUtil;
+	private final GpsUtilService gpsUtilService;
 	private final RewardsService rewardsService;
 	private final TripPricer tripPricer = new TripPricer();
 	public final Tracker tracker;
@@ -48,9 +52,10 @@ public class TourGuideService {
 	 * @param gpsUtil the GPS utility service
 	 * @param rewardsService the rewards service
 	 */
-	public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService) {
+	public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService, GpsUtilService gpsUtilService) {
 		this.gpsUtil = gpsUtil;
 		this.rewardsService = rewardsService;
+		this.gpsUtilService = gpsUtilService;
 		
 		Locale.setDefault(Locale.US);
 
@@ -80,7 +85,7 @@ public class TourGuideService {
 	 * @param user the user to retrieve the location for
 	 * @return the visited location of the user
 	 */
-	public VisitedLocation getUserLocation(User user) {
+	public VisitedLocation getUserLocation(User user) throws ExecutionException, InterruptedException {
 		VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
 				: trackUserLocation(user);
 		return visitedLocation;
@@ -132,13 +137,33 @@ public class TourGuideService {
 	}
 
 	/**
-	 * Tracks the current location of a user and updates their rewards
+	 * Tracks the current location of a user
 	 *
 	 * @param user the user to track
 	 * @return the visited location of the user
 	 */
-	public VisitedLocation trackUserLocation(User user) {
-		VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
+	public VisitedLocation trackUserLocation(User user){
+		executor.submit(() -> {
+			gpsUtilService.getFinalizeLocation(user, this);
+		});
+		try {
+			return getUserLocation(user);
+		} catch(ExecutionException e) {
+			throw new RuntimeException(e);
+		} catch(InterruptedException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	/**
+	 * Adds a new visited location to a user's list of visited locations
+	 * and calculates the user's rewards from their visited locations
+	 *
+	 * @param user The user for whom the visited location
+	 * @param visitedLocation The location visited by the user
+	 * @return The visited location that has been added to the user's list of visited locations
+	 */
+	public VisitedLocation submitLocation(User user, VisitedLocation visitedLocation) {
 		user.addToVisitedLocations(visitedLocation);
 		rewardsService.calculateRewards(user);
 		return visitedLocation;
@@ -151,8 +176,9 @@ public class TourGuideService {
 	 * @return the list of nearby attractions
 	 */
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
-		List<Attraction> nearbyAttractions = new ArrayList<>();		for (Attraction attraction : gpsUtil.getAttractions()) {
-			if (rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
+		List<Attraction> nearbyAttractions = new ArrayList<>();
+		for (Attraction attraction : gpsUtilService.getAttractions()) {
+			if(rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
 				nearbyAttractions.add(attraction);
 			}
 		}

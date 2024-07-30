@@ -1,6 +1,7 @@
 package com.openclassrooms.tourguide;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import com.jsoniter.output.JsonStream;
 import com.openclassrooms.tourguide.DTO.NearAttractionsDTO;
@@ -46,8 +47,8 @@ public class TourGuideController {
      * @return the visited location of the user
      */
     @RequestMapping("/getLocation") 
-    public VisitedLocation getLocation(@RequestParam String userName) {
-    	return tourGuideService.getUserLocation(getUser(userName));
+    public VisitedLocation getLocation(@RequestParam String userName) throws ExecutionException, InterruptedException {
+        return tourGuideService.getUserLocation(getUser(userName));
     }
 
     /**
@@ -57,8 +58,9 @@ public class TourGuideController {
      * @return JSON serialized list of nearby attractions
      */
     @RequestMapping("/getNearbyAttractions")
-    public String getNearbyAttractions(@RequestParam String userName) {
-        List<NearAttractionsDTO> nearbyAttractions = nearAttractionsDTOService.getNearByAttractions(userName);
+    public String getNearbyAttractions(@RequestParam String userName) throws ExecutionException, InterruptedException {
+        List<NearAttractionsDTO> nearbyAttractions = null;
+        nearbyAttractions = nearAttractionsDTOService.getNearByAttractions(userName);
         return JsonStream.serialize(nearbyAttractions);
     }
 

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 /**
@@ -41,7 +42,7 @@ public class NearAttractionsDTOService {
      * @param userName the username of the user
      * @return a list of nearby attractions DTOs
      */
-    public List<NearAttractionsDTO> getNearByAttractions(String userName){
+    public List<NearAttractionsDTO> getNearByAttractions(String userName) throws ExecutionException, InterruptedException {
         // Get user by username
         User user = tourGuideService.getUser(userName);
 

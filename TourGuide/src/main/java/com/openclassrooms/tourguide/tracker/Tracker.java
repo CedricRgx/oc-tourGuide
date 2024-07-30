@@ -1,6 +1,7 @@
 package com.openclassrooms.tourguide.tracker;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -60,7 +61,9 @@ public class Tracker extends Thread {
 			// Start the stopwatch to measure the time taken for tracking
 			stopWatch.start();
 			// Track the location for each user
-			users.forEach(u -> tourGuideService.trackUserLocation(u));
+			users.forEach(u -> {
+                    tourGuideService.trackUserLocation(u);
+            });
 			// Stop the stopwatch
 			stopWatch.stop();
 			logger.debug("Tracker Time Elapsed: " + TimeUnit.MILLISECONDS.toSeconds(stopWatch.getTime()) + " seconds.");
