@@ -30,7 +30,23 @@ public class GpsUtilService {
         this.gpsUtil = gpsUtil;
     }
 
-    public static ExecutorService executor = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors() * (1 + 10000/3), Integer.MAX_VALUE, 30, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+    // Creating an Executor Service named 'executor'
+    public static ExecutorService executor =
+        // ThreadPoolExecutor is being used for the executor
+        new ThreadPoolExecutor(
+            // Initial pool size - the number of threads to keep in the pool, even if they are inactive,
+            // Number of available processors (cores) multiplied by waitTime/serviceTime (i.e. the ratio
+            // of the time a task spends waiting in the executor queue (waitTime) to the time it takes
+            // for a thread to complete the task (serviceTime))
+            Runtime.getRuntime().availableProcessors() * (1 + 10000/3),
+            // Maximum allowed pool size
+            Integer.MAX_VALUE,
+            // Keep alive time for inactive threads when number of threads is more than the core pool size
+            30,
+            // Unit for keep alive time
+            TimeUnit.SECONDS,
+            // Task queue buffer to hold tasks before they are executed
+            new LinkedBlockingQueue<>());
 
     /**
      * Retrieves the current location of a user asynchronously and

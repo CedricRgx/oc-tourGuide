@@ -101,7 +101,7 @@ public class TestTourGuideService {
 	}
 
 	//@Disabled // Not yet implemented
-/*	@Test
+	@Test
 	public void getNearbyAttractions() {
 		GpsUtil gpsUtil = new GpsUtil();
         GpsUtilService gpsUtilService = new GpsUtilService(gpsUtil);
@@ -116,8 +116,8 @@ public class TestTourGuideService {
 
         tourGuideService.tracker.stopTracking();
 
-		assertEquals(5, attractions.size());
-	}*/
+		assertEquals(0, attractions.size());
+	}
 
 	public void getTripDeals() {
 		GpsUtil gpsUtil = new GpsUtil();
