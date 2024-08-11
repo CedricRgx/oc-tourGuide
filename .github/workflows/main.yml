@@ -1,0 +1,71 @@
+name: Build, Test, and Push Docker image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_test:
+    runs-on: debian:latest
+    container:
+      image: debian:latest
+
+    steps:
+      # Checks out the code from the repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Installs JDK 11 using the AdoptOpenJDK distribution
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+
+      # Runs Maven's compile goal to compile the project
+      - name: Compile project
+        run: mvn compile
+
+      # Executes the Maven test goal to run all tests
+      - name: Run tests
+        run: mvn test
+
+      # Packages the application using Maven (mvn package)
+      - name: Build artifacts
+        run: mvn package
+
+      # Uploads the compiled .jar file as an artifact
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: TourGuide-artifact
+          path: target/*.jar
+
+  docker_build:
+    runs-on: debian:latest
+    needs: build_and_test
+
+    steps:
+      # Checks out the code from the repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Prepares Docker Buildx, which allows building multi-platform Docker images
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      # Authenticates to Docker Hub using secrets for your Docker Hub credential
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{secrets.DOCKER_USERNAME}}
+          password: ${{secrets.DOCKER_PASSWORD}}
+
+      # Builds the Docker image based on the Dockerfile and pushes it to Docker Hub with the tag dockerhub-username/tourguide:latest
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: Dockerfile
+          tags: dockerhub-username/tourguide:latest
