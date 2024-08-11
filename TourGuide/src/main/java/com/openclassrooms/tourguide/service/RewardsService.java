@@ -1,7 +1,10 @@
 package com.openclassrooms.tourguide.service;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.UUID;
+import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +17,9 @@ import gpsUtil.location.VisitedLocation;
 import rewardCentral.RewardCentral;
 import com.openclassrooms.tourguide.user.User;
 import com.openclassrooms.tourguide.user.UserReward;
+
+import static com.openclassrooms.tourguide.service.GpsUtilService.executor;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
 
 /**
  * Service for managing rewards in the TourGuide application
@@ -65,17 +71,48 @@ public class RewardsService {
 	public void calculateRewards(User user) {
 		CopyOnWriteArrayList<VisitedLocation> userLocationsCopy = new CopyOnWriteArrayList<>(user.getVisitedLocations()); // create a copy of list of locations (getVisitedLocations)
 		List<Attraction> attractions = gpsUtil.getAttractions();
-
 		for(VisitedLocation visitedLocation : userLocationsCopy) {
 			for(Attraction attraction : attractions) {
 				if(user.getUserRewards().stream().filter(r -> r.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
 					if(nearAttraction(visitedLocation, attraction)) {
-						user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
+						getRewardPointsAsync(attraction, user).thenAccept(rewardPoints -> {
+							user.addUserReward(new UserReward(visitedLocation, attraction, rewardPoints));
+						});
 					}
 				}
 			}
 		}
 	}
+
+	/**
+	 * Calculates reward points for a user visiting an attraction blocking until completion
+	 *
+	 * @param attraction the Attraction being visited
+	 * @param user the User who is visiting the attraction
+	 *
+	 * @return the reward points earned, or 0 in case of error
+	 */
+	public int getRewardPoints(Attraction attraction, User user) {
+		return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
+	}
+
+	/**
+	 * Asynchronously calculates reward points for a user at an attraction
+	 *
+	 * @param attraction The Attraction of interest
+	 *
+	 * @param user The User to calculate reward points for
+	 * @return Returns a CompletableFuture of reward points
+	 */
+	public CompletableFuture<Integer> getRewardPointsAsync(Attraction attraction, User user) {
+		return CompletableFuture.supplyAsync(() -> {
+			try {
+				return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
+			} catch (Exception e) {
+				throw new CompletionException(e);
+			}
+		}, executor);
+    }
 
 	/**
 	 * Checks if a location is within proximity of an attraction
@@ -97,17 +134,6 @@ public class RewardsService {
 	 */
 	private boolean nearAttraction(VisitedLocation visitedLocation, Attraction attraction) {
 		return getDistance(attraction, visitedLocation.location) > proximityBuffer ? false : true;
-	}
-
-	/**
-	 * Gets the reward points for a user at a given attraction
-	 *
-	 * @param attraction the attraction to check
-	 * @param user the user to check
-	 * @return the reward points for the user at the attraction
-	 */
-	private int getRewardPoints(Attraction attraction, User user) {
-		return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
 	}
 
 	/**
