@@ -75,13 +75,32 @@ public class RewardsService {
 			for(Attraction attraction : attractions) {
 				if(user.getUserRewards().stream().filter(r -> r.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
 					if(nearAttraction(visitedLocation, attraction)) {
-						getRewardPointsAsync(attraction, user).thenAccept(rewardPoints -> {
+/*						getRewardPointsAsync(attraction, user).thenAccept(rewardPoints -> {
 							user.addUserReward(new UserReward(visitedLocation, attraction, rewardPoints));
-						});
+						});*/
+						calculateDistanceReward(user, visitedLocation, attraction);
 					}
 				}
 			}
 		}
+	}
+
+	public void calculateDistanceReward(User user, VisitedLocation visitedLocation, Attraction attraction) {
+		Double distance = getDistance(attraction, visitedLocation.location);
+		UserReward userReward = new UserReward(visitedLocation, attraction, distance.intValue());
+		executor.submit(() -> {
+			getRewardPointsAsync(userReward, attraction, user);
+		});
+	}
+
+	private void getRewardPointsAsync(UserReward userReward, Attraction attraction, User user) {
+		CompletableFuture.supplyAsync(() -> {
+					return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
+				}, executor)
+				.thenAccept(rewardsPoints -> {
+					userReward.setRewardPoints(rewardsPoints);
+					user.addUserReward(userReward);
+				});
 	}
 
 	/**
