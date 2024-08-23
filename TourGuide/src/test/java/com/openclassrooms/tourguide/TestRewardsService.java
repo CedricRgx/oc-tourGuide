@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 import com.openclassrooms.tourguide.service.GpsUtilService;
 import org.junit.jupiter.api.Test;
@@ -27,15 +28,15 @@ public class TestRewardsService {
 
 	@Test
 	public void userGetRewards() {
-		GpsUtil gpsUtil = new GpsUtil();
-		GpsUtilService getUserLocationService = new GpsUtilService(gpsUtil);
-		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
+		GpsUtilService gpsUtilService = new GpsUtilService();
+		GpsUtilService getUserLocationService = new GpsUtilService();
+		RewardsService rewardsService = new RewardsService(gpsUtilService, new RewardCentral());
 
 		InternalTestHelper.setInternalUserNumber(0);
-		TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService, getUserLocationService);
+		TourGuideService tourGuideService = new TourGuideService(gpsUtilService, rewardsService);
 
 		User user = new User(UUID.randomUUID(), "jon", "000", "jon@tourGuide.com");
-		Attraction attraction = gpsUtil.getAttractions().get(0);
+		Attraction attraction = gpsUtilService.getAttractions().get(0);
 		user.addToVisitedLocations(new VisitedLocation(user.getUserId(), attraction, new Date()));
         tourGuideService.trackUserLocation(user);
         List<UserReward> userRewards = user.getUserRewards();
@@ -45,9 +46,9 @@ public class TestRewardsService {
 
 	@Test
 	public void isWithinAttractionProximity() {
-		GpsUtil gpsUtil = new GpsUtil();
-		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
-		Attraction attraction = gpsUtil.getAttractions().get(0);
+		GpsUtilService gpsUtilService = new GpsUtilService();
+		RewardsService rewardsService = new RewardsService(gpsUtilService, new RewardCentral());
+		Attraction attraction = gpsUtilService.getAttractions().get(0);
 		assertTrue(rewardsService.isWithinAttractionProximity(attraction, attraction));
 	}
 
@@ -55,17 +56,16 @@ public class TestRewardsService {
 	@Test
 	public void nearAllAttractions() {
 		GpsUtil gpsUtil = new GpsUtil();
-		GpsUtilService gpsUtilService = new GpsUtilService(gpsUtil);
-		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
+		GpsUtilService gpsUtilService = new GpsUtilService();
+		RewardsService rewardsService = new RewardsService(gpsUtilService, new RewardCentral());
 		rewardsService.setProximityBuffer(Integer.MAX_VALUE);
 
 		InternalTestHelper.setInternalUserNumber(1);
-		TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService, gpsUtilService);
+		TourGuideService tourGuideService = new TourGuideService(gpsUtilService, rewardsService);
 
 		User user = tourGuideService.getAllUsers().get(0);
 
 		rewardsService.calculateRewards(user);
-		List<UserReward> userRewards = tourGuideService.getUserRewards(user);
 		tourGuideService.tracker.stopTracking();
 
 		// List of attractions of the user last position in a range of 10 miles

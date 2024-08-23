@@ -33,17 +33,17 @@ public class RewardsService {
     private int defaultProximityBuffer = 10;
 	private int proximityBuffer = defaultProximityBuffer;
 	private int attractionProximityRange = 200;
-	private final GpsUtil gpsUtil;
+	private final GpsUtilService gpsUtilService;
 	private final RewardCentral rewardsCentral;
 
 	/**
 	 * Constructs a RewardsService with the given dependencies
 	 *
-	 * @param gpsUtil the GPS utility service
+	 * @param gpsUtilService the GPS utility service
 	 * @param rewardCentral the rewards central service
 	 */
-	public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
-		this.gpsUtil = gpsUtil;
+	public RewardsService(GpsUtilService gpsUtilService, RewardCentral rewardCentral) {
+		this.gpsUtilService = gpsUtilService;
 		this.rewardsCentral = rewardCentral;
 	}
 
@@ -70,38 +70,42 @@ public class RewardsService {
 	 */
 	public void calculateRewards(User user) {
 		CopyOnWriteArrayList<VisitedLocation> userLocationsCopy = new CopyOnWriteArrayList<>(user.getVisitedLocations()); // create a copy of list of locations (getVisitedLocations)
-		List<Attraction> attractions = gpsUtil.getAttractions();
+		List<Attraction> attractions = gpsUtilService.getAttractions();
 		for(VisitedLocation visitedLocation : userLocationsCopy) {
 			for(Attraction attraction : attractions) {
 				if(user.getUserRewards().stream().filter(r -> r.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
 					if(nearAttraction(visitedLocation, attraction)) {
-/*						getRewardPointsAsync(attraction, user).thenAccept(rewardPoints -> {
+						user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
+						/*getRewardPointsAsync(attraction, user).thenAccept(rewardPoints -> {
 							user.addUserReward(new UserReward(visitedLocation, attraction, rewardPoints));
 						});*/
-						calculateDistanceReward(user, visitedLocation, attraction);
+						//calculateDistanceReward(user, visitedLocation, attraction);
 					}
 				}
 			}
 		}
 	}
 
-	public void calculateDistanceReward(User user, VisitedLocation visitedLocation, Attraction attraction) {
+/*	public void calculateDistanceReward(User user, VisitedLocation visitedLocation, Attraction attraction) {
 		Double distance = getDistance(attraction, visitedLocation.location);
 		UserReward userReward = new UserReward(visitedLocation, attraction, distance.intValue());
 		executor.submit(() -> {
 			getRewardPointsAsync(userReward, attraction, user);
 		});
-	}
+	}*/
 
-	private void getRewardPointsAsync(UserReward userReward, Attraction attraction, User user) {
-		CompletableFuture.supplyAsync(() -> {
+	public int getRewardPoints(Attraction attraction, User user) {
+		CompletableFuture<Integer> completableFuture = CompletableFuture.supplyAsync(() -> {
 					return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
-				}, executor)
-				.thenAccept(rewardsPoints -> {
-					userReward.setRewardPoints(rewardsPoints);
-					user.addUserReward(userReward);
-				});
-	}
+				}, executor);
+        try {
+            return completableFuture.get();
+        } catch(InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch(ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 	/**
 	 * Calculates reward points for a user visiting an attraction blocking until completion
@@ -111,9 +115,9 @@ public class RewardsService {
 	 *
 	 * @return the reward points earned, or 0 in case of error
 	 */
-	public int getRewardPoints(Attraction attraction, User user) {
+/*	public int getRewardPoints(Attraction attraction, User user) {
 		return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
-	}
+	}*/
 
 	/**
 	 * Asynchronously calculates reward points for a user at an attraction

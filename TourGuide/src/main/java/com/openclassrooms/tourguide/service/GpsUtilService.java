@@ -23,12 +23,12 @@ public class GpsUtilService {
 
     /**
      * Constructor for GetUserLocationService
-     *
-     * @param gpsUtil Instance of GpsUtil to have location data
      */
-    public GpsUtilService(GpsUtil gpsUtil){
-        this.gpsUtil = gpsUtil;
+    public GpsUtilService(){
+        this.gpsUtil = new GpsUtil();
     }
+
+    //public static ExecutorService executor = Executors.newFixedThreadPool(1000);
 
     // Creating an Executor Service named 'executor'
     public static ExecutorService executor =

@@ -39,7 +39,6 @@ import static com.openclassrooms.tourguide.service.GpsUtilService.executor;
 @Service
 public class TourGuideService {
 	private Logger logger = LoggerFactory.getLogger(TourGuideService.class);
-	private final GpsUtil gpsUtil;
 	private final GpsUtilService gpsUtilService;
 	private final RewardsService rewardsService;
 	private final TripPricer tripPricer = new TripPricer();
@@ -49,11 +48,10 @@ public class TourGuideService {
 	/**
 	 * Constructs a TourGuideService with the given dependencies
 	 *
-	 * @param gpsUtil the GPS utility service
+	 * @param gpsUtilService the GPS utility service
 	 * @param rewardsService the rewards service
 	 */
-	public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService, GpsUtilService gpsUtilService) {
-		this.gpsUtil = gpsUtil;
+	public TourGuideService(GpsUtilService gpsUtilService, RewardsService rewardsService) {
 		this.rewardsService = rewardsService;
 		this.gpsUtilService = gpsUtilService;
 		
