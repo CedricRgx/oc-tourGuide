@@ -31,30 +31,50 @@ import gpsUtil.location.VisitedLocation;
 import tripPricer.Provider;
 import tripPricer.TripPricer;
 
-import static com.openclassrooms.tourguide.service.GpsUtilService.executor;
 
 /**
  * Service for managing users and their interactions with attractions, rewards, and trip deals in the TourGuide application
  */
 @Service
 public class TourGuideService {
+
+	public static ExecutorService executor = Executors.newFixedThreadPool(10000);
+
+/*	public static ExecutorService executor =
+			// ThreadPoolExecutor is being used for the executor
+			new ThreadPoolExecutor(
+					// Initial pool size - the number of threads to keep in the pool, even if they are inactive,
+					// Number of available processors (cores) multiplied by waitTime/serviceTime (i.e. the ratio
+					// of the time a task spends waiting in the executor queue (waitTime) to the time it takes
+					// for a thread to complete the task (serviceTime))
+					Runtime.getRuntime().availableProcessors() * (1 + 10000 / 3),
+					// Maximum allowed pool size
+					Integer.MAX_VALUE,
+					// Keep alive time for inactive threads when number of threads is more than the core pool size
+					30,
+					// Unit for keep alive time
+					TimeUnit.SECONDS,
+					// Task queue buffer to hold tasks before they are executed
+					new LinkedBlockingQueue<>());*/
+
 	private Logger logger = LoggerFactory.getLogger(TourGuideService.class);
-	private final GpsUtilService gpsUtilService;
+	private final GpsUtil gpsUtil;
 	private final RewardsService rewardsService;
 	private final TripPricer tripPricer = new TripPricer();
 	public final Tracker tracker;
 	boolean testMode = true;
 
+
 	/**
 	 * Constructs a TourGuideService with the given dependencies
 	 *
-	 * @param gpsUtilService the GPS utility service
+	 * @param gpsUtil        the GPS utility service
 	 * @param rewardsService the rewards service
 	 */
-	public TourGuideService(GpsUtilService gpsUtilService, RewardsService rewardsService) {
+	public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService) {
 		this.rewardsService = rewardsService;
-		this.gpsUtilService = gpsUtilService;
-		
+		this.gpsUtil = gpsUtil;
+
 		Locale.setDefault(Locale.US);
 
 		if (testMode) {
@@ -83,10 +103,10 @@ public class TourGuideService {
 	 * @param user the user to retrieve the location for
 	 * @return the visited location of the user
 	 */
-	public VisitedLocation getUserLocation(User user) throws ExecutionException, InterruptedException {
-		VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
+	public VisitedLocation getUserLocation(User user) {
+		Object visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
 				: trackUserLocation(user);
-		return visitedLocation;
+		return (VisitedLocation) visitedLocation;
 	}
 
 	/**
@@ -134,37 +154,17 @@ public class TourGuideService {
 		return providers;
 	}
 
-	/**
-	 * Tracks the current location of a user
-	 *
-	 * @param user the user to track
-	 * @return the visited location of the user
-	 */
-	public VisitedLocation trackUserLocation(User user){
-		executor.submit(() -> {
-			gpsUtilService.getFinalizeLocation(user, this);
-		});
-		try {
-			return getUserLocation(user);
-		} catch(ExecutionException e) {
-			throw new RuntimeException(e);
-		} catch(InterruptedException e) {
-			throw new RuntimeException(e);
-		}
-	}
 
-	/**
-	 * Adds a new visited location to a user's list of visited locations
-	 * and calculates the user's rewards from their visited locations
-	 *
-	 * @param user The user for whom the visited location
-	 * @param visitedLocation The location visited by the user
-	 * @return The visited location that has been added to the user's list of visited locations
-	 */
-	public VisitedLocation submitLocation(User user, VisitedLocation visitedLocation) {
-		user.addToVisitedLocations(visitedLocation);
-		rewardsService.calculateRewards(user);
-		return visitedLocation;
+	public CompletableFuture<VisitedLocation> trackUserLocation(User user) {
+		CompletableFuture<VisitedLocation> completableFutureVisitedLocation = CompletableFuture.supplyAsync(() -> {
+			VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
+			return visitedLocation;
+		}, executor).thenApplyAsync((visitedLocation) -> {
+			user.addToVisitedLocations(visitedLocation);
+			rewardsService.calculateRewards(user).join();
+			return visitedLocation;
+		}, rewardsService.getExecutorRewardsService());
+		return completableFutureVisitedLocation;
 	}
 
 	/**
@@ -175,9 +175,9 @@ public class TourGuideService {
 	 */
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
 		List<Attraction> nearbyAttractions = new ArrayList<>();
-		List<Attraction> listAttractions = gpsUtilService.getAttractions();
+		List<Attraction> listAttractions = gpsUtil.getAttractions();
 		for (Attraction attraction : listAttractions) {
-			if(rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
+			if (rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
 				nearbyAttractions.add(attraction);
 			}
 		}
@@ -196,9 +196,9 @@ public class TourGuideService {
 	}
 
 	/**********************************************************************************
-	 * 
+	 *
 	 * Methods Below: For Internal Testing
-	 * 
+	 *
 	 **********************************************************************************/
 	private static final String tripPricerApiKey = "test-server-api-key";
 	// Database connection will be used for external users, but for testing purposes

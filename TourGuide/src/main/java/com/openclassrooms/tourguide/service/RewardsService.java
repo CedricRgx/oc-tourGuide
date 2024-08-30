@@ -1,25 +1,25 @@
 package com.openclassrooms.tourguide.service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.*;
-import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
+import com.openclassrooms.tourguide.user.User;
+import com.openclassrooms.tourguide.user.UserReward;
 import gpsUtil.GpsUtil;
 import gpsUtil.location.Attraction;
 import gpsUtil.location.Location;
 import gpsUtil.location.VisitedLocation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 import rewardCentral.RewardCentral;
-import com.openclassrooms.tourguide.user.User;
-import com.openclassrooms.tourguide.user.UserReward;
 
-import static com.openclassrooms.tourguide.service.GpsUtilService.executor;
-import static java.util.concurrent.CompletableFuture.supplyAsync;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+
+import static com.openclassrooms.tourguide.service.TourGuideService.executor;
 
 /**
  * Service for managing rewards in the TourGuide application
@@ -27,24 +27,30 @@ import static java.util.concurrent.CompletableFuture.supplyAsync;
 @Service
 public class RewardsService {
 	private Logger logger = LoggerFactory.getLogger(RewardsService.class);
-    private static final double STATUTE_MILES_PER_NAUTICAL_MILE = 1.15077945;
+	private static final double STATUTE_MILES_PER_NAUTICAL_MILE = 1.15077945;
+
+	private static ExecutorService executorRewardsService = Executors.newFixedThreadPool(10000);
 
 	// proximity in miles
-    private int defaultProximityBuffer = 10;
+	private int defaultProximityBuffer = 10;
 	private int proximityBuffer = defaultProximityBuffer;
 	private int attractionProximityRange = 200;
-	private final GpsUtilService gpsUtilService;
+	private final GpsUtil gpsUtil;
 	private final RewardCentral rewardsCentral;
 
 	/**
 	 * Constructs a RewardsService with the given dependencies
 	 *
-	 * @param gpsUtilService the GPS utility service
+	 * @param gpsUtil the GPS utility service
 	 * @param rewardCentral the rewards central service
 	 */
-	public RewardsService(GpsUtilService gpsUtilService, RewardCentral rewardCentral) {
-		this.gpsUtilService = gpsUtilService;
+	public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
+		this.gpsUtil = gpsUtil;
 		this.rewardsCentral = rewardCentral;
+	}
+
+	public ExecutorService getExecutorRewardsService(){
+		return this.executorRewardsService;
 	}
 
 	/**
@@ -68,74 +74,58 @@ public class RewardsService {
 	 *
 	 * @param user the user for whom rewards are calculated
 	 */
-	public void calculateRewards(User user) {
+	public CompletableFuture<Void> calculateRewards(User user) {
 		CopyOnWriteArrayList<VisitedLocation> userLocationsCopy = new CopyOnWriteArrayList<>(user.getVisitedLocations()); // create a copy of list of locations (getVisitedLocations)
-		List<Attraction> attractions = gpsUtilService.getAttractions();
+		List<Attraction> attractions = gpsUtil.getAttractions();
+		List<CompletableFuture<Void>> futuresList = new ArrayList<>();
+
+		for(VisitedLocation visitedLocation : userLocationsCopy) {
+			for(Attraction attraction : attractions) {
+				if(user.getUserRewards().stream().filter(r -> r.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
+					if(nearAttraction(visitedLocation, attraction)) {
+						// catch the result of async task
+						CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(() -> {
+							user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
+						}, executorRewardsService); // The execution task will be manipulated by the executorRewardsService
+						futuresList.add(completableFuture);
+					}
+				}
+			}
+		}
+		return CompletableFuture.allOf(futuresList.toArray(new CompletableFuture[0]));
+	}
+
+
+
+
+/*	public void calculateRewards(User user) {
+		CopyOnWriteArrayList<VisitedLocation> userLocationsCopy = new CopyOnWriteArrayList<>(user.getVisitedLocations()); // create a copy of list of locations (getVisitedLocations)
+		List<Attraction> attractions = gpsUtil.getAttractions();
 		for(VisitedLocation visitedLocation : userLocationsCopy) {
 			for(Attraction attraction : attractions) {
 				if(user.getUserRewards().stream().filter(r -> r.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
 					if(nearAttraction(visitedLocation, attraction)) {
 						user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
-						/*getRewardPointsAsync(attraction, user).thenAccept(rewardPoints -> {
-							user.addUserReward(new UserReward(visitedLocation, attraction, rewardPoints));
-						});*/
-						//calculateDistanceReward(user, visitedLocation, attraction);
 					}
 				}
 			}
 		}
+	}*/
+
+	public CompletableFuture<Void> calculateRewardsAllUsers(List<User> userList) {
+		List<CompletableFuture<Void>> futuresList = userList.stream()
+				.map(user -> this.calculateRewards(user)).toList();
+		return CompletableFuture.allOf(futuresList.toArray(new CompletableFuture[futuresList.size()]));
 	}
 
-/*	public void calculateDistanceReward(User user, VisitedLocation visitedLocation, Attraction attraction) {
-		Double distance = getDistance(attraction, visitedLocation.location);
-		UserReward userReward = new UserReward(visitedLocation, attraction, distance.intValue());
-		executor.submit(() -> {
-			getRewardPointsAsync(userReward, attraction, user);
-		});
-	}*/
+
 
 	public int getRewardPoints(Attraction attraction, User user) {
-		CompletableFuture<Integer> completableFuture = CompletableFuture.supplyAsync(() -> {
-					return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
-				}, executor);
-        try {
-            return completableFuture.get();
-        } catch(InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch(ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-	/**
-	 * Calculates reward points for a user visiting an attraction blocking until completion
-	 *
-	 * @param attraction the Attraction being visited
-	 * @param user the User who is visiting the attraction
-	 *
-	 * @return the reward points earned, or 0 in case of error
-	 */
-/*	public int getRewardPoints(Attraction attraction, User user) {
 		return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
-	}*/
+	}
 
-	/**
-	 * Asynchronously calculates reward points for a user at an attraction
-	 *
-	 * @param attraction The Attraction of interest
-	 *
-	 * @param user The User to calculate reward points for
-	 * @return Returns a CompletableFuture of reward points
-	 */
-	public CompletableFuture<Integer> getRewardPointsAsync(Attraction attraction, User user) {
-		return CompletableFuture.supplyAsync(() -> {
-			try {
-				return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
-			} catch (Exception e) {
-				throw new CompletionException(e);
-			}
-		}, executor);
-    }
+
+
 
 	/**
 	 * Checks if a location is within proximity of an attraction
@@ -167,17 +157,17 @@ public class RewardsService {
 	 * @return the distance between the two locations in statute miles
 	 */
 	public double getDistance(Location loc1, Location loc2) {
-        double lat1 = Math.toRadians(loc1.latitude);
-        double lon1 = Math.toRadians(loc1.longitude);
-        double lat2 = Math.toRadians(loc2.latitude);
-        double lon2 = Math.toRadians(loc2.longitude);
+		double lat1 = Math.toRadians(loc1.latitude);
+		double lon1 = Math.toRadians(loc1.longitude);
+		double lat2 = Math.toRadians(loc2.latitude);
+		double lon2 = Math.toRadians(loc2.longitude);
 
-        double angle = Math.acos(Math.sin(lat1) * Math.sin(lat2)
-                               + Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon1 - lon2));
+		double angle = Math.acos(Math.sin(lat1) * Math.sin(lat2)
+				+ Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon1 - lon2));
 
-        double nauticalMiles = 60 * Math.toDegrees(angle);
-        double statuteMiles = STATUTE_MILES_PER_NAUTICAL_MILE * nauticalMiles;
-        return statuteMiles;
+		double nauticalMiles = 60 * Math.toDegrees(angle);
+		double statuteMiles = STATUTE_MILES_PER_NAUTICAL_MILE * nauticalMiles;
+		return statuteMiles;
 	}
 
 	/**
