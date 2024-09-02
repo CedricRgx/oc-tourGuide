@@ -11,15 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import rewardCentral.RewardCentral;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
-
-import static com.openclassrooms.tourguide.service.TourGuideService.executor;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * Service for managing rewards in the TourGuide application
@@ -30,6 +23,8 @@ public class RewardsService {
 	private static final double STATUTE_MILES_PER_NAUTICAL_MILE = 1.15077945;
 
 	private static ExecutorService executorRewardsService = Executors.newFixedThreadPool(10000);
+
+
 
 	// proximity in miles
 	private int defaultProximityBuffer = 10;
@@ -74,7 +69,7 @@ public class RewardsService {
 	 *
 	 * @param user the user for whom rewards are calculated
 	 */
-	public CompletableFuture<Void> calculateRewards(User user) {
+/*	public CompletableFuture<Void> calculateRewards(User user) {
 		CopyOnWriteArrayList<VisitedLocation> userLocationsCopy = new CopyOnWriteArrayList<>(user.getVisitedLocations()); // create a copy of list of locations (getVisitedLocations)
 		List<Attraction> attractions = gpsUtil.getAttractions();
 		List<CompletableFuture<Void>> futuresList = new ArrayList<>();
@@ -93,10 +88,47 @@ public class RewardsService {
 			}
 		}
 		return CompletableFuture.allOf(futuresList.toArray(new CompletableFuture[0]));
+	}*/
+
+	// Declare a volatile list that will serve as a cache for Attraction objects
+	private volatile List<Attraction> attractionCache = null;
+
+	public List<Attraction> getAttractionsWithCache() {
+		if (attractionCache == null) {
+			// Synchronize the block to prevent multiple threads from entering it in the same time
+			synchronized (this) {
+				// Check again if the cache is still null
+				if (attractionCache == null) {
+					// Load the attractions from gpsUtil and assign them to attractionCache
+					attractionCache = gpsUtil.getAttractions();
+				}
+			}
+		}
+		// Return the cache (which now contains the attractions, either freshly loaded or from an earlier load
+		return attractionCache;
 	}
 
+	public CompletableFuture<Void> calculateRewards(User user) {
+		CopyOnWriteArrayList<VisitedLocation> userLocationsCopy = new CopyOnWriteArrayList<>(user.getVisitedLocations()); // create a copy of list of locations (getVisitedLocations)
+		List<Attraction> attractions = getAttractionsWithCache(); //gpsUtil.getAttractions();
+		List<CompletableFuture<Void>> futuresList = new ArrayList<>();
 
-
+		for(VisitedLocation visitedLocation : userLocationsCopy) {
+			for(Attraction attraction : attractions) {
+				if(user.getUserRewards().stream().noneMatch(r -> r.attraction != null && attraction != null
+						&& r.attraction.attractionName != null && r.attraction.attractionName.equals(attraction.attractionName))) {
+					if(nearAttraction(visitedLocation, attraction)) {
+						// catch the result of async task
+						CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(() -> {
+							user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
+						}, executorRewardsService); // The execution task will be manipulated by the executorRewardsService
+						futuresList.add(completableFuture);
+					}
+				}
+			}
+		}
+		return CompletableFuture.allOf(futuresList.toArray(new CompletableFuture[0]));
+	}
 
 /*	public void calculateRewards(User user) {
 		CopyOnWriteArrayList<VisitedLocation> userLocationsCopy = new CopyOnWriteArrayList<>(user.getVisitedLocations()); // create a copy of list of locations (getVisitedLocations)
@@ -118,14 +150,9 @@ public class RewardsService {
 		return CompletableFuture.allOf(futuresList.toArray(new CompletableFuture[futuresList.size()]));
 	}
 
-
-
 	public int getRewardPoints(Attraction attraction, User user) {
 		return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
 	}
-
-
-
 
 	/**
 	 * Checks if a location is within proximity of an attraction
@@ -156,7 +183,7 @@ public class RewardsService {
 	 * @param loc2 the second location
 	 * @return the distance between the two locations in statute miles
 	 */
-	public double getDistance(Location loc1, Location loc2) {
+/*	public double getDistance(Location loc1, Location loc2) {
 		double lat1 = Math.toRadians(loc1.latitude);
 		double lon1 = Math.toRadians(loc1.longitude);
 		double lat2 = Math.toRadians(loc2.latitude);
@@ -168,6 +195,25 @@ public class RewardsService {
 		double nauticalMiles = 60 * Math.toDegrees(angle);
 		double statuteMiles = STATUTE_MILES_PER_NAUTICAL_MILE * nauticalMiles;
 		return statuteMiles;
+	}*/
+
+	public static final double RADIUS_OF_EARTH_IN_MILES = 3958.8;
+
+	public double getDistance(Location loc1, Location loc2) {
+		double lat1 = Math.toRadians(loc1.latitude);
+		double lon1 = Math.toRadians(loc1.longitude);
+		double lat2 = Math.toRadians(loc2.latitude);
+		double lon2 = Math.toRadians(loc2.longitude);
+
+		double dLat = lat2 - lat1;
+		double dLon = lon2 - lon1;
+
+		double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+				Math.cos(lat1) * Math.cos(lat2) *
+						Math.sin(dLon / 2) * Math.sin(dLon / 2);
+		double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+		return RADIUS_OF_EARTH_IN_MILES * c;
 	}
 
 	/**
