@@ -7,9 +7,7 @@ import gpsUtil.location.Location;
 /**
  * The NearAttractionsDTO DTO is for communicating information to the /getNearbyAttractions endpoint
  */
-@JsonPropertyOrder(
-        {"attractionName", "attractionLocation", "userLocation", "distanceBetweenLocationAttractionAndUserLocation", "rewardPoints"}
-)
+@JsonPropertyOrder({"attractionName", "attractionLocation", "userLocation", "distanceBetweenLocationAttractionAndUserLocation", "rewardPoints"})
 public class NearAttractionsDTO {
 
     @JsonProperty("attractionName")

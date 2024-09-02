@@ -37,34 +37,74 @@ public class User {
 		this.emailAddress = emailAddress;
 	}
 
+	/**
+	 * Returns the unique identifier (UUID) of the user
+	 *
+	 * @return the `UUID` representing the user's unique identifier
+	 */
 	public UUID getUserId() {
 		return userId;
 	}
-	
+
+	/**
+	 * Returns the username of the user
+	 *
+	 * @return the `String` representing the user's username
+	 */
 	public String getUserName() {
 		return userName;
 	}
-	
+
+	/**
+	 * Sets the phone number for the user
+	 *
+	 * @param phoneNumber the `String` representing the user's phone number
+	 */
 	public void setPhoneNumber(String phoneNumber) {
 		this.phoneNumber = phoneNumber;
 	}
-	
+
+	/**
+	 * Returns the phone number of the user
+	 *
+	 * @return the `String` representing the user's phone number
+	 */
 	public String getPhoneNumber() {
 		return phoneNumber;
 	}
 
+	/**
+	 * Sets the email address for the user
+	 *
+	 * @param emailAddress the `String` representing the user's email address
+	 */
 	public void setEmailAddress(String emailAddress) {
 		this.emailAddress = emailAddress;
 	}
-	
+
+	/**
+	 * Returns the email address of the user
+	 *
+	 * @return the `String` representing the user's email address
+	 */
 	public String getEmailAddress() {
 		return emailAddress;
 	}
-	
+
+	/**
+	 * Sets the timestamp for the user's latest location
+	 *
+	 * @param latestLocationTimestamp the `Date` representing the timestamp of the user's most recent location
+	 */
 	public void setLatestLocationTimestamp(Date latestLocationTimestamp) {
 		this.latestLocationTimestamp = latestLocationTimestamp;
 	}
-	
+
+	/**
+	 * Returns the timestamp of the user's latest location
+	 *
+	 * @return the `Date` representing the timestamp of the user's most recent location
+	 */
 	public Date getLatestLocationTimestamp() {
 		return latestLocationTimestamp;
 	}
@@ -105,26 +145,57 @@ public class User {
 		}
 	}
 
+	/**
+	 * Returns the list of rewards earned by the user
+	 *
+	 * @return a `List<UserReward>` containing the user's rewards
+	 */
 	public List<UserReward> getUserRewards() {
 		return userRewards;
 	}
 
+	/**
+	 * Returns the user's preferences
+	 *
+	 * @return a `UserPreferences` object representing the user's preferences
+	 */
 	public UserPreferences getUserPreferences() {
 		return userPreferences;
 	}
-	
+
+	/**
+	 * Sets the user's preferences
+	 *
+	 * @param userPreferences the `UserPreferences` object representing the user's preferences
+	 */
 	public void setUserPreferences(UserPreferences userPreferences) {
 		this.userPreferences = userPreferences;
 	}
 
+	/**
+	 * Returns the most recent location visited by the user
+	 *
+	 * @return the `VisitedLocation` object representing the user's last visited location
+	 * @throws IndexOutOfBoundsException if the user has no visited locations
+	 */
 	public VisitedLocation getLastVisitedLocation() {
 		return visitedLocations.get(visitedLocations.size() - 1);
 	}
-	
+
+	/**
+	 * Sets the list of trip deals available to the user
+	 *
+	 * @param tripDeals the `List<Provider>` representing the trip deals to be set for the user
+	 */
 	public void setTripDeals(List<Provider> tripDeals) {
 		this.tripDeals = tripDeals;
 	}
-	
+
+	/**
+	 * Returns the list of trip deals available to the user
+	 *
+	 * @return a `List<Provider>` representing the user's trip deals
+	 */
 	public List<Provider> getTripDeals() {
 		return tripDeals;
 	}

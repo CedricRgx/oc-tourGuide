@@ -9,6 +9,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class TourguideApplication {
 
+	/**
+	 * The entry point of the Tourguide application. This method starts the Spring Boot application
+	 *
+	 * @param args the command-line arguments passed to the application
+	 */
 	public static void main(String[] args) {
 		SpringApplication.run(TourguideApplication.class, args);
 	}

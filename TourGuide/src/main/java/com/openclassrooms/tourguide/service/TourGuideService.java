@@ -37,7 +37,6 @@ import tripPricer.TripPricer;
  */
 @Service
 public class TourGuideService {
-
 	public static ExecutorService executor = Executors.newFixedThreadPool(10000);
 
 /*	public static ExecutorService executor =
@@ -57,11 +56,12 @@ public class TourGuideService {
 					// Task queue buffer to hold tasks before they are executed
 					new LinkedBlockingQueue<>());*/
 
-	private Logger logger = LoggerFactory.getLogger(TourGuideService.class);
 	private final GpsUtil gpsUtil;
 	private final RewardsService rewardsService;
 	private final TripPricer tripPricer = new TripPricer();
 	public final Tracker tracker;
+
+	private Logger logger = LoggerFactory.getLogger(TourGuideService.class);
 	boolean testMode = true;
 
 
@@ -154,7 +154,15 @@ public class TourGuideService {
 		return providers;
 	}
 
-
+	/**
+	 * Tracks the user's current location asynchronously and calculates rewards based on the location
+	 *
+	 * The user's location is retrieved and added to their visited locations
+	 * Rewards are then calculated for the user based on the new location
+	 *
+	 * @param user the user whose location is being tracked
+	 * @return a `CompletableFuture<VisitedLocation>` that completes with the user's visited location once it is tracked and rewards are calculated
+	 */
 	public CompletableFuture<VisitedLocation> trackUserLocation(User user) {
 		CompletableFuture<VisitedLocation> completableFutureVisitedLocation = CompletableFuture.supplyAsync(() -> {
 			VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
