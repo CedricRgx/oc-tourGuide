@@ -5,7 +5,7 @@ import java.util.concurrent.ExecutionException;
 
 import com.jsoniter.output.JsonStream;
 import com.openclassrooms.tourguide.DTO.NearAttractionsDTO;
-import com.openclassrooms.tourguide.service.NearAttractionsDTOService;
+import com.openclassrooms.tourguide.service.NearAttractionsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,7 +28,7 @@ public class TourGuideController {
     TourGuideService tourGuideService;
 
     @Autowired
-    NearAttractionsDTOService nearAttractionsDTOService;
+    NearAttractionsService nearAttractionsDTOService;
 
     /**
      * Endpoint to return a greeting message
@@ -47,7 +47,7 @@ public class TourGuideController {
      * @return the visited location of the user
      */
     @RequestMapping("/getLocation") 
-    public VisitedLocation getLocation(@RequestParam String userName) throws ExecutionException, InterruptedException {
+    public VisitedLocation getLocation(@RequestParam String userName) {
         return tourGuideService.getUserLocation(getUser(userName));
     }
 

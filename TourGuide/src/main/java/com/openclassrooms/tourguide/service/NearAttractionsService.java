@@ -17,20 +17,20 @@ import java.util.stream.Collectors;
  * Service for handling operations related to nearby attractions
  */
 @Service
-public class NearAttractionsDTOService {
+public class NearAttractionsService {
 
     private final GpsUtil gpsUtil;
     private final RewardsService rewardsService;
     private final TourGuideService tourGuideService;
 
     /**
-     * Create a NearAttractionsDTOService with the given dependencies
+     * Create a NearAttractionsService with the given dependencies
      *
      * @param gpsUtil          the GPS utility service
      * @param rewardsService   the rewards service
      * @param tourGuideService the tour guide service
      */
-    public NearAttractionsDTOService(GpsUtil gpsUtil, RewardsService rewardsService, TourGuideService tourGuideService) {
+    public NearAttractionsService(GpsUtil gpsUtil, RewardsService rewardsService, TourGuideService tourGuideService) {
         this.gpsUtil = gpsUtil;
         this.rewardsService = rewardsService;
         this.tourGuideService = tourGuideService;
